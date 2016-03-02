@@ -190,7 +190,7 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
                     '@select': 'id,name,type,shortDescription,terms,classificacaoEtaria,project.name,owner.id,owner.name',
                     '@files': '(avatar.smallAvatar):url',
                     'space:@select': 'id,name,endereco',
-                    'space:@files': '(avatar.smallAvatar):url',
+                    'space:@files': '(avatar.avatarSmall):url',
                     '@from': moment(from).format('Y-MM-DD'),
                     '@to': moment(to).format('Y-MM-DD'),
                 }, params);
