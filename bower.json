@@ -1,0 +1,24 @@
+{
+  "name": "ng-mapasculturais",
+  "authors": [
+    "Rafael Chaves Freitas <rafael.chaves.freitas@gmail.com>"
+  ],
+  "description": "Services to use Mapas Culturais API",
+  "main": "ng-mapasculturais.js",
+  "moduleType": [],
+  "keywords": [
+    "MapasCulturais"
+  ],
+  "license": "AGPL",
+  "homepage": "https://github.com/hacklabr/ng-mapasculturais",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "moment": "^2.11.2"
+  }
+}
