@@ -114,8 +114,8 @@ mapas.factory('mapas.service.api', ['$http', '$q', function ($http, $q) {
                 }
             };
 
-            return {
-                _select: 'id,name,shortDescription',
+            var api = {
+                _select: 'id,name,type,location,shortDescription',
                 util: util,
                 setDefaultSelect: function (select) {
                     this._select = select;
@@ -161,16 +161,22 @@ mapas.factory('mapas.service.api', ['$http', '$q', function ($http, $q) {
                         });
                 },
                 findOne: function (params) {
-                    var url = createUrl(entity, 'findOne', {params: params});
+                    params = angular.extend({
+                        '@select': api._selectOne || api._select,
+                        '@files': '(avatar.avatarSmall, avatar.avatarMedium, avatar.avatarBig, avatar.avatarEvent):url',
+                    }, params);
+                    var url = createUrl('findOne', {params: params});
 
                     params['@select'] = (params && params['@select']) || this._select;
 
-                    return $http.get(url)
+                    return $http.get(url, {params:params})
                         .then(function (response) {
-                            return processEntity(response);
+                            return processEntity(response.data);
                         });
                 },
-            }
+            };
+            
+            return api;
 
         }
     }]);
@@ -184,11 +190,13 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
             var agentApi = agentApiService(installationUrl);
 
             api.util.applyMe.apply(this);
-
+            api._select = 'id,name,subTitle,type,shortDescription,terms,classificacaoEtaria,project.id,project.name,owner.id,owner.name';
+            api._selectOne = 'id,name,subTitle,type,shortDescription,terms,classificacaoEtaria,project.id,project.name,owner.id,owner.name,occurrences';
+            
             api.find = function (from, to, params) {
                 params = angular.extend({
-                    '@select': 'id,name,type,shortDescription,terms,classificacaoEtaria,project.name,owner.id,owner.name',
-                    '@files': '(avatar.smallAvatar):url',
+                    '@select': api._select,
+                    '@files': '(avatar.avatarSmall):url',
                     'space:@select': 'id,name,endereco',
                     'space:@files': '(avatar.avatarSmall):url',
                     '@from': moment(from).format('Y-MM-DD'),
@@ -211,7 +219,7 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
 
             api.findByProject = function (projectId, from, to, params) {
                 params = params || {};
-
+                
                 return projectApi.getChildrenIds(projectId, true).then(function (ids) {
                     params.project = $IN(ids);
                     return api.find(from, to, params);
@@ -245,7 +253,6 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
                     var str = event.start.format(startDateFormat);
                     
                     if(str !== lastStr){
-                        console.log(str);
                         lastStr = str;
                         last = {
                             date: moment(str),
@@ -253,7 +260,6 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
                         };
                         
                         group.push(last);
-                        
                     }
                     
                     last.events.push(event);
@@ -271,7 +277,9 @@ mapas.factory('mapas.service.agent', ['$http', '$q', 'mapas.service.api', functi
             var api = mapasApi(installationUrl, 'agent');
 
             api.util.applyMe.apply(this);
-
+            
+            api._selectOne = 'id,name,endereco,type,shortDescription,longDescription,terms,classificacaoEtaria,parent.id,parent.name'
+            
             api.findByOwner = function (agentId, params) {
                 params = params || {};
 
@@ -291,6 +299,8 @@ mapas.factory('mapas.service.space', ['$http', '$q', 'mapas.service.api', 'mapas
             var agentApi = agentApiService(installationUrl);
 
             api.util.applyMe.apply(this);
+            
+            api._selectOne = 'id,name,subTitle,endereco,type,shortDescription,longDescription,terms,classificacaoEtaria,owner.id,owner.name'
 
             api.findByOwner = function (agentId, params) {
                 params = params || {};
@@ -320,6 +330,8 @@ mapas.factory('mapas.service.project', ['$http', '$q', 'mapas.service.api', 'map
             var agentApi = agentApiService(installationUrl);
 
             api.util.applyMe.apply(this);
+            
+            api._selectOne = 'id,name,type,shortDescription,longDescription,terms,owner.id,owner.name'
 
             api.findByOwner = function (agentId, params) {
                 params = params || {};
