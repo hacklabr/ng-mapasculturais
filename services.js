@@ -115,7 +115,7 @@ mapas.factory('mapas.service.api', ['$http', '$q', function ($http, $q) {
             };
 
             var api = {
-                _select: 'id,name,type,location,shortDescription',
+                _select: 'id,name,type,location,shortDescription,terms',
                 util: util,
                 setDefaultSelect: function (select) {
                     this._select = select;
@@ -152,7 +152,11 @@ mapas.factory('mapas.service.api', ['$http', '$q', function ($http, $q) {
                 },
                 find: function (params) {
                     var url = createUrl('find', {params: params});
-                    params = params || {'@limit': 10};
+                    params = angular.extend({
+                        '@select': api._select,
+                        '@files': '(avatar.avatarSmall):url',
+                    }, params);
+                    
                     params['@select'] = (params && params['@select']) || this._select;
 
                     return $http({url: url, method: 'GET', params: params})
@@ -278,6 +282,7 @@ mapas.factory('mapas.service.agent', ['$http', '$q', 'mapas.service.api', functi
 
             api.util.applyMe.apply(this);
             
+            api._select = 'id,name,endereco,type,shortDescription,longDescription,terms,classificacaoEtaria,parent.id,parent.name'
             api._selectOne = 'id,name,endereco,type,shortDescription,longDescription,terms,classificacaoEtaria,parent.id,parent.name'
             
             api.findByOwner = function (agentId, params) {
