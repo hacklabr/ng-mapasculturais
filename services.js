@@ -247,6 +247,16 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
                     return api.find(from, to, params);
                 });
             };
+
+
+            api.findByEvent = function (eventId, from, to, params) {
+                params = params || {};
+
+                params.id = $IN(eventId);
+                
+                return api.find(from, to, params);
+                
+            };
             
             api.group = function(startDateFormat, events){
                 var group = [];
