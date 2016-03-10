@@ -4,64 +4,86 @@ var mapas = angular.module('mapas.service', [])
         }]);
 
 mapas.factory('mapas.service.api', ['$http', '$q', function ($http, $q) {
-        return function (installationUrl, entity) {
+        return function (installationUrl) {
             if (installationUrl[installationUrl.length - 1] !== '/') {
                 installationUrl += '/';
             }
-
-            function createUrl(endpoint) {
+            
+            function createUrl(entity, endpoint) {
                 return installationUrl + 'api/' + entity + '/' + endpoint;
             }
 
-            function processEntity(entity) {
-                if (entity.createTimestamp) {
-                    entity.createTimestamp = moment(entity.createTimestamp.date);
-                }
-                
-                var files = {};
-                Object.keys(entity).forEach(function (key) {
-                    if(key.substr(0,6) === '@files'){
-                        files[key.split('.').pop()] = entity[key];
-                        delete entity[key];
-                    }
-                });
-                entity['$files'] = files;
-                return entity;
-            }
-
-            function parseValue(val, escape) {
-                val = String(val);
-                if (escape) {
-                    val = val.replace(/,/g, '\\,');
-                }
-
-                return encodeURIComponent(val);
-            }
-
-            function getArgs(args) {
-                var values = [];
-
-                if (args.length === 1 && args[0] instanceof Array) {
-                    args = args[0];
-                }
-
-                for (var i in args) {
-                    values.push(args[i]);
-                }
-                return values.map(parseValue).toString();
-            }
-
             var util = {
+                getArgs: function (args) {
+                    var values = [];
+
+                    if (args.length === 1 && args[0] instanceof Array) {
+                        args = args[0];
+                    }
+
+                    for (var i in args) {
+                        values.push(args[i]);
+                    }
+                    return values.map(parseValue).toString();
+                }
+            };
+            
+            var api = {
+                util: util,
+                get: function (entity, endpoint, params) {
+                    var url = createUrl(entity, endpoint);
+                    console.log(url, createUrl);
+                    return $http.get(url, {params: params})
+                        .then(function (response) {
+                            return response.data;
+                        });
+                },
+                
+                taxonomyTerms: function(taxonomySlug){
+                    return api.get('term', 'list/' + taxonomySlug);
+                }
+            };
+
+            return api;
+        }
+    }]);
+
+mapas.factory('mapas.service.entity', ['$http', '$q', 'mapas.service.api', function ($http, $q, mapasApi) {
+        return function (installationUrl, entity) {
+            var api = mapasApi(installationUrl);
+            
+            api.util = angular.extend(api.util, {
                 applyMe: function () {
-                    Object.keys(util).forEach(function (key) {
+                    Object.keys(api.util).forEach(function (key) {
                         if (key[0] !== 'applyMe') {
-                            this[key] = util[key];
+                            this[key] = api.util[key];
                         }
                     });
                 },
-                createUrl: createUrl,
-                parseValue: parseValue,
-                processEntity: processEntity,
+                
+                processEntity: function (entity) {
+                    if (entity.createTimestamp) {
+                        entity.createTimestamp = moment(entity.createTimestamp.date);
+                    }
+
+                    var files = {};
+                    Object.keys(entity).forEach(function (key) {
+                        if (key.substr(0, 6) === '@files') {
+                            files[key.split('.').pop()] = entity[key];
+                            delete entity[key];
+                        }
+                    });
+                    entity['$files'] = files;
+                    return entity;
+                },
+                parseValue: function (val, escape) {
+                    val = String(val);
+                    if (escape) {
+                        val = val.replace(/,/g, '\\,');
+                    }
+
+                    return encodeURIComponent(val);
+                },
                 $EQ: function (val) {
                     val = parseValue(val);
                     return "EQ(" + val + ")";
@@ -111,73 +133,83 @@ mapas.factory('mapas.service.api', ['$http', '$q', function ($http, $q) {
                 },
                 $AND: function () {
                     return "AND(" + getArgs(arguments) + ')';
+                },
+                createUrl: function (endpoint) {
+                    return installationUrl + 'api/' + entity + '/' + endpoint;
                 }
+            });
+            window.UTIL = api.util;
+            
+            api.util.applyMe.apply(this);
+            
+            api._select = 'id,name,type,location,shortDescription,terms';
+            api._selectOne = 'id,name,type,location,shortDescription,terms';
+
+            api.setDefaultSelect = function (select) {
+                this._select = select;
             };
+            
+            api.describe = function () {
+                var url = createUrl('describe');
 
-            var api = {
-                _select: 'id,name,type,location,shortDescription,terms',
-                util: util,
-                setDefaultSelect: function (select) {
-                    this._select = select;
-                },
-                describe: function () {
-                    var url = createUrl('describe');
+                return $http({url: url, method: 'GET'})
+                    .then(function (response) {
+                        return response.data;
+                    });
+            };
+            
+            api.getTypes = function () {
+                var url = createUrl('getTypes');
 
-                    return $http({url: url, method: 'GET'})
-                        .then(function (response) {
-                            return response.data;
-                        });
-                },
-                getTypes: function () {
-                    var url = createUrl('getTypes');
+                return $http({url: url, method: 'GET'})
+                    .then(function (response) {
+                        if (includeEntityId) {
+                            response.data.push(entityId);
+                        }
+                        return response.data;
+                    });
+            };
+            
+            api.getChildrenIds = function (entityId, includeEntityId) {
+                var url = createUrl('getChildrenIds/' + entityId);
 
-                    return $http({url: url, method: 'GET'})
-                        .then(function (response) {
-                            if (includeEntityId) {
-                                response.data.push(entityId);
-                            }
-                            return response.data;
-                        });
-                },
-                getChildrenIds: function (entityId, includeEntityId) {
-                    var url = createUrl('getChildrenIds/' + entityId);
+                return $http({url: url, method: 'GET'})
+                    .then(function (response) {
+                        if (includeEntityId) {
+                            response.data.push(entityId);
+                        }
+                        return response.data;
+                    });
+            };
+            
+            api.find = function (params) {
+                var url = createUrl('find', {params: params});
+                params = angular.extend({
+                    '@select': api._select,
+                    '@files': '(avatar.avatarSmall):url',
+                }, params);
 
-                    return $http({url: url, method: 'GET'})
-                        .then(function (response) {
-                            if (includeEntityId) {
-                                response.data.push(entityId);
-                            }
-                            return response.data;
-                        });
-                },
-                find: function (params) {
-                    var url = createUrl('find', {params: params});
-                    params = angular.extend({
-                        '@select': api._select,
-                        '@files': '(avatar.avatarSmall):url',
-                    }, params);
-                    
-                    params['@select'] = (params && params['@select']) || this._select;
+                params['@select'] = (params && params['@select']) || this._select;
 
-                    return $http({url: url, method: 'GET', params: params})
-                        .then(function (response) {
-                            return response.data.map(processEntity);
-                        });
-                },
-                findOne: function (params) {
-                    params = angular.extend({
-                        '@select': api._selectOne || api._select,
-                        '@files': '(avatar.avatarSmall, avatar.avatarMedium, avatar.avatarBig, avatar.avatarEvent):url',
-                    }, params);
-                    var url = createUrl('findOne', {params: params});
+                return $http({url: url, method: 'GET', params: params})
+                    .then(function (response) {
+                        return response.data.map(processEntity);
+                    });
+            };
+            
+            api.findOne = function (params) {
+                params = angular.extend({
+                    '@select': api._selectOne || api._select,
+                    '@files': '(avatar.avatarSmall, avatar.avatarMedium, avatar.avatarBig, avatar.avatarEvent):url',
+                }, params);
+                var url = createUrl('findOne', {params: params});
 
-                    params['@select'] = (params && params['@select']) || this._select;
+                params['@select'] = (params && params['@select']) || this._select;
 
-                    return $http.get(url, {params:params})
-                        .then(function (response) {
-                            return processEntity(response.data);
-                        });
-                },
+                return $http.get(url, {params: params})
+                    .then(function (response) {
+                        return processEntity(response.data);
+                    });
             };
             
             return api;
@@ -185,7 +217,7 @@ mapas.factory('mapas.service.api', ['$http', '$q', function ($http, $q) {
         }
     }]);
 
-mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas.service.project', 'mapas.service.space', 'mapas.service.agent', function ($http, $q, mapasApi, projectApiService, spaceApiService, agentApiService) {
+mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.entity', 'mapas.service.project', 'mapas.service.space', 'mapas.service.agent', function ($http, $q, mapasApi, projectApiService, spaceApiService, agentApiService) {
         return function (installationUrl) {
             //http://spcultura.prefeitura.sp.gov.br/api/event/findByLocation/?&term:linguagem=IN(M%C3%BAsica%20Popular)&@from=2016-02-26&@to=2016-03-26&@select=id,name,type,shortDescription,terms,classificacaoEtaria,project.name,project.singleUrl,occurrences&@files=(avatar.avatarMedium):url&@page=1&@limit=10&@order=name%20ASC
             var api = mapasApi(installationUrl, 'event');
@@ -196,7 +228,7 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
             api.util.applyMe.apply(this);
             api._select = 'id,name,subTitle,type,shortDescription,terms,classificacaoEtaria,project.id,project.name,owner.id,owner.name';
             api._selectOne = 'id,name,subTitle,type,shortDescription,terms,classificacaoEtaria,project.id,project.name,owner.id,owner.name,occurrences';
-            
+
             api.find = function (from, to, params) {
                 params = angular.extend({
                     '@select': api._select,
@@ -208,14 +240,15 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
                 }, params);
 
                 var url = createUrl('findOccurrences');
+                
                 return $http({url: url, method: 'GET', params: params})
                     .then(function (response) {
-                        return response.data.map(function(entity){
+                        return response.data.map(function (entity) {
                             entity.space = processEntity(entity.space);
                             processEntity(entity);
                             entity.start = moment(entity.starts_on + ' ' + entity.starts_at);
-                            entity.end = moment((entity.ends_on || entity.starts_on )+ ' ' + entity.ends_at);
-                            
+                            entity.end = moment((entity.ends_on || entity.starts_on) + ' ' + entity.ends_at);
+
                             return entity;
                         });
                     });
@@ -223,7 +256,7 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
 
             api.findByProject = function (projectId, from, to, params) {
                 params = params || {};
-                
+
                 return projectApi.getChildrenIds(projectId, true).then(function (ids) {
                     params.project = $IN(ids);
                     return api.find(from, to, params);
@@ -253,32 +286,32 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
                 params = params || {};
 
                 params.id = $IN(eventId);
-                
+
                 return api.find(from, to, params);
-                
+
             };
-            
-            api.group = function(startDateFormat, events){
+
+            api.group = function (startDateFormat, events) {
                 var group = [];
                 var lastStr;
                 var last
-                
-                events.forEach(function(event){
+
+                events.forEach(function (event) {
                     var str = event.start.format(startDateFormat);
-                    
-                    if(str !== lastStr){
+
+                    if (str !== lastStr) {
                         lastStr = str;
                         last = {
                             date: moment(str),
                             events: []
                         };
-                        
+
                         group.push(last);
                     }
-                    
+
                     last.events.push(event);
                 });
-                
+
                 return group;
             };
 
@@ -286,15 +319,15 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.api', 'mapas
         }
     }]);
 
-mapas.factory('mapas.service.agent', ['$http', '$q', 'mapas.service.api', function ($http, $q, mapasApi) {
+mapas.factory('mapas.service.agent', ['$http', '$q', 'mapas.service.entity', function ($http, $q, mapasApi) {
         return function (installationUrl) {
             var api = mapasApi(installationUrl, 'agent');
 
             api.util.applyMe.apply(this);
-            
+
             api._select = 'id,name,endereco,type,shortDescription,longDescription,terms,classificacaoEtaria,parent.id,parent.name'
             api._selectOne = 'id,name,endereco,type,shortDescription,longDescription,terms,classificacaoEtaria,parent.id,parent.name'
-            
+
             api.findByOwner = function (agentId, params) {
                 params = params || {};
 
@@ -308,13 +341,13 @@ mapas.factory('mapas.service.agent', ['$http', '$q', 'mapas.service.api', functi
         }
     }]);
 
-mapas.factory('mapas.service.space', ['$http', '$q', 'mapas.service.api', 'mapas.service.agent', function ($http, $q, mapasApi, agentApiService) {
+mapas.factory('mapas.service.space', ['$http', '$q', 'mapas.service.entity', 'mapas.service.agent', function ($http, $q, mapasApi, agentApiService) {
         return function (installationUrl) {
             var api = mapasApi(installationUrl, 'space');
             var agentApi = agentApiService(installationUrl);
 
             api.util.applyMe.apply(this);
-            
+
             api._selectOne = 'id,name,subTitle,endereco,type,shortDescription,longDescription,terms,classificacaoEtaria,owner.id,owner.name'
 
             api.findByOwner = function (agentId, params) {
@@ -339,13 +372,13 @@ mapas.factory('mapas.service.space', ['$http', '$q', 'mapas.service.api', 'mapas
         }
     }]);
 
-mapas.factory('mapas.service.project', ['$http', '$q', 'mapas.service.api', 'mapas.service.agent', function ($http, $q, mapasApi, agentApiService) {
+mapas.factory('mapas.service.project', ['$http', '$q', 'mapas.service.entity', 'mapas.service.agent', function ($http, $q, mapasApi, agentApiService) {
         return function (installationUrl) {
             var api = mapasApi(installationUrl, 'project');
             var agentApi = agentApiService(installationUrl);
 
             api.util.applyMe.apply(this);
-            
+
             api._selectOne = 'id,name,type,shortDescription,longDescription,terms,owner.id,owner.name'
 
             api.findByOwner = function (agentId, params) {
