@@ -32,7 +32,7 @@ mapas.factory('mapas.service.api', ['$http', '$q', function ($http, $q) {
                 util: util,
                 get: function (entity, endpoint, params) {
                     var url = createUrl(entity, endpoint);
-                    console.log(url, createUrl);
+
                     return $http.get(url, {params: params})
                         .then(function (response) {
                             return response.data;
@@ -51,6 +51,10 @@ mapas.factory('mapas.service.api', ['$http', '$q', function ($http, $q) {
 mapas.factory('mapas.service.entity', ['$http', '$q', 'mapas.service.api', function ($http, $q, mapasApi) {
         return function (installationUrl, entity) {
             var api = mapasApi(installationUrl);
+
+            function createUrl(endpoint) {
+                return installationUrl + 'api/' + entity + '/' + endpoint;
+            }
             
             api.util = angular.extend(api.util, {
                 applyMe: function () {
@@ -138,9 +142,6 @@ mapas.factory('mapas.service.entity', ['$http', '$q', 'mapas.service.api', funct
                     return installationUrl + 'api/' + entity + '/' + endpoint;
                 }
             });
-            window.UTIL = api.util;
-            
-            api.util.applyMe.apply(this);
             
             api._select = 'id,name,type,location,shortDescription,terms';
             api._selectOne = 'id,name,type,location,shortDescription,terms';
@@ -171,8 +172,9 @@ mapas.factory('mapas.service.entity', ['$http', '$q', 'mapas.service.api', funct
             };
             
             api.getChildrenIds = function (entityId, includeEntityId) {
+                console.log('getChildrenIds:: BEFORE (' + entity +'/' + entityId);
                 var url = createUrl('getChildrenIds/' + entityId);
-
+                console.log('getChildrenIds:: AFTER (' + entity +'/' + entityId);
                 return $http({url: url, method: 'GET'})
                     .then(function (response) {
                         if (includeEntityId) {
