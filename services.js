@@ -69,6 +69,14 @@ mapas.factory('mapas.service.entity', ['$http', '$q', 'mapas.service.api', funct
                     if (entity.createTimestamp) {
                         entity.createTimestamp = moment(entity.createTimestamp.date);
                     }
+                    
+                    if(entity.shortDescription){
+                        entity.shortDescription = entity.shortDescription.replace(/\n/g, "<br>");
+                    }
+                    
+                    if(entity.longDescription){
+                        entity.longDescription = entity.longDescription.replace(/\n/g, "<br>");
+                    }
 
                     var files = {};
                     Object.keys(entity).forEach(function (key) {
@@ -172,9 +180,8 @@ mapas.factory('mapas.service.entity', ['$http', '$q', 'mapas.service.api', funct
             };
             
             api.getChildrenIds = function (entityId, includeEntityId) {
-                console.log('getChildrenIds:: BEFORE (' + entity +'/' + entityId);
                 var url = createUrl('getChildrenIds/' + entityId);
-                console.log('getChildrenIds:: AFTER (' + entity +'/' + entityId);
+                
                 return $http({url: url, method: 'GET'})
                     .then(function (response) {
                         if (includeEntityId) {
