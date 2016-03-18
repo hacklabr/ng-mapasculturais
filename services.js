@@ -377,6 +377,21 @@ mapas.factory('mapas.service.space', ['$http', '$q', 'mapas.service.entity', 'ma
                 });
             };
 
+            api.findByEvents = function (from, to, params) {
+                params = angular.extend({
+                    '@select': api._select,
+                    '@from': moment(from).format('Y-MM-DD'),
+                    '@to': moment(to).format('Y-MM-DD'),
+                }, params);
+
+                var url = createUrl('findByEvents');
+                
+                return $http({url: url, method: 'GET', params: params})
+                    .then(function (response) {
+                        return response.data;
+                    });
+            };
+
             return api;
         }
     }]);
