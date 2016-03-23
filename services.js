@@ -151,8 +151,8 @@ mapas.factory('mapas.service.entity', ['$http', '$q', 'mapas.service.api', funct
                 }
             });
             
-            api._select = 'id,name,type,location,shortDescription,terms';
-            api._selectOne = 'id,name,type,location,shortDescription,terms';
+            api._select = 'id,name,isVerified,type,location,shortDescription,terms';
+            api._selectOne = 'id,name,isVerified,type,location,shortDescription,terms';
 
             api.setDefaultSelect = function (select) {
                 this._select = select;
@@ -172,9 +172,6 @@ mapas.factory('mapas.service.entity', ['$http', '$q', 'mapas.service.api', funct
 
                 return $http({url: url, method: 'GET'})
                     .then(function (response) {
-                        if (includeEntityId) {
-                            response.data.push(entityId);
-                        }
                         return response.data;
                     });
             };
@@ -235,8 +232,8 @@ mapas.factory('mapas.service.event', ['$http', '$q', 'mapas.service.entity', 'ma
             var agentApi = agentApiService(installationUrl);
 
             api.util.applyMe.apply(this);
-            api._select = 'id,name,subTitle,type,shortDescription,terms,classificacaoEtaria,project.id,project.name,owner.id,owner.name';
-            api._selectOne = 'id,name,subTitle,type,shortDescription,terms,classificacaoEtaria,project.id,project.name,owner.id,owner.name,occurrences';
+            api._select = 'id,name,isVerified,subTitle,type,shortDescription,terms,classificacaoEtaria,project.id,project.name,owner.id,owner.name';
+            api._selectOne = 'id,name,isVerified,subTitle,type,shortDescription,terms,classificacaoEtaria,project.id,project.name,owner.id,owner.name,occurrences';
 
             api.find = function (from, to, params) {
                 params = angular.extend({
@@ -388,7 +385,7 @@ mapas.factory('mapas.service.space', ['$http', '$q', 'mapas.service.entity', 'ma
                 
                 return $http({url: url, method: 'GET', params: params})
                     .then(function (response) {
-                        return response.data;
+                        return response.data.map(processEntity);
                     });
             };
 
